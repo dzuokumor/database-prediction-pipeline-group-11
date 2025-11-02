@@ -288,4 +288,162 @@ def get_lifestyle_factors(lifestyle_id: int) -> Optional[Dict[str, Any]]:
     return results[0] if results else None
 
 
-def get_all_lifestyle_factors(skip: int = 0, limit: int = 100) -> List[Dict
+def get_all_lifestyle_factors(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get all lifestyle factors with pagination (from SQL)"""
+    query = "SELECT * FROM lifestyle_factors ORDER BY lifestyle_id LIMIT ? OFFSET ?"
+    return execute_query(query, (limit, skip))
+
+
+def get_lifestyle_factors_by_patient(patient_id: int) -> List[Dict[str, Any]]:
+    """Get lifestyle factors for a specific patient (from SQL)"""
+    query = "SELECT * FROM lifestyle_factors WHERE patient_id = ? ORDER BY recorded_at DESC"
+    return execute_query(query, (patient_id,))
+
+
+def update_lifestyle_factors(lifestyle_id: int, lifestyle: LifestyleFactorsUpdate) -> Optional[Dict[str, Any]]:
+    """Update lifestyle factors in SQL and Mongo"""
+    update_fields = []
+    params = []
+    
+    if lifestyle.smoke is not None:
+        update_fields.append("smoke = ?")
+        params.append(lifestyle.smoke)
+    
+    if lifestyle.alcohol is not None:
+        update_fields.append("alcohol = ?")
+        params.append(lifestyle.alcohol)
+    
+    if lifestyle.physical_activity is not None:
+        update_fields.append("physical_activity = ?")
+        params.append(lifestyle.physical_activity)
+    
+    if not update_fields:
+        return get_lifestyle_factors(lifestyle_id)
+    
+    # --- SQL LOGIC ---
+    params.append(lifestyle_id)
+    query = f"UPDATE lifestyle_factors SET {', '.join(update_fields)} WHERE lifestyle_id = ?"
+    execute_update(query, tuple(params))
+    
+    updated_lifestyle_dict = get_lifestyle_factors(lifestyle_id)
+
+    # --- MONGO LOGIC ---
+    if updated_lifestyle_dict:
+        try:
+            db = get_mongo_db()
+            db.lifestyle_factors.update_one(
+                {"lifestyle_id": lifestyle_id},
+                {"$set": updated_lifestyle_dict}
+            )
+        except Exception as e:
+            print(f"Error: Failed to update lifestyle factors {lifestyle_id} in MongoDB.")
+            print(f"Details: {e}")
+
+    return updated_lifestyle_dict
+
+
+def delete_lifestyle_factors(lifestyle_id: int) -> bool:
+    """Delete lifestyle factors from SQL and Mongo"""
+    # --- SQL LOGIC ---
+    query = "DELETE FROM lifestyle_factors WHERE lifestyle_id = ?"
+    rows_affected = execute_update(query, (lifestyle_id,))
+    
+    # --- MONGO LOGIC ---
+    if rows_affected > 0:
+        try:
+            db = get_mongo_db()
+            db.lifestyle_factors.delete_one({"lifestyle_id": lifestyle_id})
+        except Exception as e:
+            print(f"Error: Failed to delete lifestyle factors {lifestyle_id} from MongoDB.")
+            print(f"Details: {e}")
+            
+    return rows_affected > 0
+
+
+# ============= DIAGNOSIS CRUD =============
+
+def create_diagnosis(diagnosis: DiagnosisCreate) -> Dict[str, Any]:
+    """Create a new diagnosis in SQL and Mongo (trigger will auto-log)"""
+    query = """
+    INSERT INTO diagnoses (patient_id, cardiovascular_disease)
+    VALUES (?, ?)
+    """
+    params = (diagnosis.patient_id, diagnosis.cardiovascular_disease)
+    
+    # --- SQL LOGIC ---
+    diagnosis_id = execute_insert(query, params)
+    sql_result_dict = get_diagnosis(diagnosis_id)
+
+    # --- MONGO LOGIC ---
+    if sql_result_dict:
+        try:
+            db = get_mongo_db()
+            db.diagnoses.insert_one(sql_result_dict)
+        except Exception as e:
+            print(f"Error: Failed to create diagnosis {diagnosis_id} in MongoDB.")
+            print(f"Details: {e}")
+
+    return sql_result_dict
+
+
+def get_diagnosis(diagnosis_id: int) -> Optional[Dict[str, Any]]:
+    """Get a diagnosis by ID (from SQL)"""
+    query = "SELECT * FROM diagnoses WHERE diagnosis_id = ?"
+    results = execute_query(query, (diagnosis_id,))
+    return results[0] if results else None
+
+
+def get_all_diagnoses(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get all diagnoses with pagination (from SQL)"""
+    query = "SELECT * FROM diagnoses ORDER BY diagnosis_id LIMIT ? OFFSET ?"
+    return execute_query(query, (limit, skip))
+
+
+def get_diagnoses_by_patient(patient_id: int) -> List[Dict[str, Any]]:
+    """Get all diagnoses for a specific patient (from SQL)"""
+    query = "SELECT * FROM diagnoses WHERE patient_id = ? ORDER BY diagnosis_date DESC"
+    return execute_query(query, (patient_id,))
+
+
+def update_diagnosis(diagnosis_id: int, diagnosis: DiagnosisUpdate) -> Optional[Dict[str, Any]]:
+    """Update a diagnosis in SQL and Mongo (trigger will auto-log the update)"""
+    if diagnosis.cardiovascular_disease is None:
+        return get_diagnosis(diagnosis_id)
+    
+    # --- SQL LOGIC ---
+    query = "UPDATE diagnoses SET cardiovascular_disease = ? WHERE diagnosis_id = ?"
+    execute_update(query, (diagnosis.cardiovascular_disease, diagnosis_id))
+    
+    updated_diagnosis_dict = get_diagnosis(diagnosis_id)
+
+    # --- MONGO LOGIC ---
+    if updated_diagnosis_dict:
+        try:
+            db = get_mongo_db()
+            db.diagnoses.update_one(
+                {"diagnosis_id": diagnosis_id},
+                {"$set": updated_diagnosis_dict}
+            )
+        except Exception as e:
+            print(f"Error: Failed to update diagnosis {diagnosis_id} in MongoDB.")
+            print(f"Details: {e}")
+
+    return updated_diagnosis_dict
+
+
+def delete_diagnosis(diagnosis_id: int) -> bool:
+    """Delete a diagnosis from SQL and Mongo"""
+    # --- SQL LOGIC ---
+    query = "DELETE FROM diagnoses WHERE diagnosis_id = ?"
+    rows_affected = execute_update(query, (diagnosis_id,))
+    
+    # --- MONGO LOGIC ---
+    if rows_affected > 0:
+        try:
+            db = get_mongo_db()
+            db.diagnoses.delete_one({"diagnosis_id": diagnosis_id})
+        except Exception as e:
+            print(f"Error: Failed to delete diagnosis {diagnosis_id} from MongoDB.")
+            print(f"Details: {e}")
+
+    return rows_affected > 0

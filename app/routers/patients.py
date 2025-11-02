@@ -4,7 +4,7 @@ Handles all CRUD operations for patients
 """
 
 from fastapi import APIRouter, HTTPException, Query, status
-from typing import List
+from typing import List, Optional
 from app.models import PatientCreate, PatientUpdate, PatientResponse, MessageResponse
 from app import crud
 
@@ -75,6 +75,22 @@ def read_patients(
     """
     patients = crud.get_patients(skip=skip, limit=limit)
     return patients
+
+
+@router.get("/latest", response_model=PatientResponse)
+def read_latest_patient():
+    """
+    Get the latest patient
+    
+    - Fetches the patient with the highest patient_id
+    """
+    patient = crud.get_latest_patient()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No patients found in the database"
+        )
+    return patient
 
 
 @router.put("/{patient_id}", response_model=PatientResponse)

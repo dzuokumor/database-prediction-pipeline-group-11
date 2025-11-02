@@ -13,7 +13,8 @@ from app.models import (
     PatientCreate, PatientUpdate,
     MedicalMeasurementCreate, MedicalMeasurementUpdate,
     LifestyleFactorsCreate, LifestyleFactorsUpdate,
-    DiagnosisCreate, DiagnosisUpdate
+    DiagnosisCreate, DiagnosisUpdate,
+    PredictionCreate # <-- IMPORT PREDICTION MODEL
 )
 
 
@@ -66,6 +67,13 @@ def get_patients(skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
     """Get all patients with pagination (from SQL)"""
     query = "SELECT * FROM patients ORDER BY patient_id LIMIT ? OFFSET ?"
     return execute_query(query, (limit, skip))
+
+
+def get_latest_patient() -> Optional[Dict[str, Any]]:
+    """Get the patient with the highest ID (the latest one)"""
+    query = "SELECT * FROM patients ORDER BY patient_id DESC LIMIT 1"
+    results = execute_query(query)
+    return results[0] if results else None
 
 
 def update_patient(patient_id: int, patient: PatientUpdate) -> Optional[Dict[str, Any]]:

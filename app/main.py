@@ -16,6 +16,9 @@ from app.routers import patients, medical_measurements, lifestyle_factors, diagn
 # MongoDB routers
 from app.routers import mongo_patients, mongo_medical_records, mongo_stats
 
+# Prediction router
+from app.routers import prediction  # <-- THIS IS THE NEW IMPORT
+
 from app.models import HealthCheck
 from app.database import (
     test_connection, 
@@ -54,6 +57,9 @@ app.include_router(mongo_patients.router, prefix="/api/v1")
 app.include_router(mongo_medical_records.router, prefix="/api/v1")
 app.include_router(mongo_stats.router, prefix="/api/v1")
 
+# Include Prediction router
+app.include_router(prediction.router, prefix="/api/v1")  # <-- THIS IS THE NEW ROUTER
+
 
 @app.get("/", tags=["Root"])
 def read_root():
@@ -83,7 +89,8 @@ def read_root():
                 "medical_records": "/api/v1/mongo/medical-records",
                 "health": "/api/v1/mongo/health",
                 "stats": "/api/v1/mongo/stats"
-            }
+            },
+            "predictions": "/api/v1/predictions" # <-- Added this for clarity
         },
         "health_check": "/health"
     }
@@ -158,6 +165,7 @@ async def startup_event():
     print(f"✓ API Health Check: http://localhost:8000/health")
     print(f"✓ SQLite Endpoints: /api/v1/patients, /api/v1/medical-measurements, etc.")
     print(f"✓ MongoDB Endpoints: /api/v1/mongo/patients, /api/v1/mongo/medical-records")
+    print(f"✓ Prediction Endpoint: /api/v1/predictions") # <-- Added this for clarity
     print("="*60 + "\n")
 
 

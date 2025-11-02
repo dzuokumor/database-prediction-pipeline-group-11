@@ -6,6 +6,7 @@ Based on cardiovascular disease database schema
 from pydantic import BaseModel, Field, validator
 from typing import Optional
 from enum import IntEnum
+from datetime import datetime # <-- ADDED THIS IMPORT
 
 
 # ============= ENUMS =============
@@ -169,7 +170,7 @@ class DiagnosisCreate(DiagnosisBase):
 
 class DiagnosisUpdate(BaseModel):
     """Model for updating diagnosis"""
-    cardiovascular_disease: Optional[int] = Field(None, ge=0, le=1)
+    cardiovascular_disease: Optional[int] = Field(..., ge=0, le=1)
 
 
 class DiagnosisResponse(BaseModel):
@@ -197,3 +198,30 @@ class MessageResponse(BaseModel):
     """Generic message response"""
     message: str
     detail: Optional[str] = None
+
+
+# ============= PREDICTION MODELS =============
+
+class PredictionBase(BaseModel):
+    """Base model for a prediction log"""
+    patient_id: int
+    prediction_score: float = Field(..., ge=0, le=1, description="Model's raw probability score")
+    predicted_class: int = Field(..., ge=0, le=1, description="Final predicted class (0=No, 1=Yes)")
+
+class PredictionCreate(PredictionBase):
+    """Model for creating a new prediction log"""
+    pass
+
+class PredictionResponse(PredictionBase):
+    """Model for a prediction log response"""
+    # Use Field with alias to handle MongoDB's '_id'
+    id: str = Field(..., alias="_id", description="Unique prediction ID from MongoDB")
+    created_at: datetime = Field(..., description="Timestamp of when the prediction was logged")
+    
+    class Config:
+        from_attributes = True
+        populate_by_name = True # Important for aliasing _id
+        json_encoders = {
+            # This ensures datetime is sent as a clean ISO string
+            datetime: lambda dt: dt.isoformat() 
+        }

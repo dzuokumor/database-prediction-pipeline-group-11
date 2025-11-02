@@ -447,3 +447,39 @@ def delete_diagnosis(diagnosis_id: int) -> bool:
             print(f"Details: {e}")
 
     return rows_affected > 0
+
+# ============= PREDICTION CRUD =============
+
+def create_prediction(prediction: PredictionCreate) -> Dict[str, Any]:
+    """
+    Log a new prediction in MongoDB.
+    This only writes to Mongo, as predictions are not part of the SQL schema.
+    """
+    from datetime import datetime
+    
+    db = get_mongo_db()
+    
+    # Convert Pydantic model to a dictionary
+    prediction_dict = prediction.dict()
+    
+    # Add a timestamp
+    prediction_dict["created_at"] = datetime.utcnow()
+    
+    # Insert into a new 'predictions' collection
+    try:
+        result = db.predictions.insert_one(prediction_dict)
+        
+        # Get the newly created document from Mongo to return it
+        created_doc = db.predictions.find_one({"_id": result.inserted_id})
+        
+        if created_doc:
+            # Manually convert ObjectId to string for the '_id' field
+            created_doc["_id"] = str(created_doc["_id"])
+            return created_doc
+        else:
+            raise Exception("Failed to retrieve created document")
+            
+    except Exception as e:
+        print(f"Error: Failed to create prediction in MongoDB.")
+        print(f"Details: {e}")
+        raise e # Re-raise the exception so the API endpoint can catch it

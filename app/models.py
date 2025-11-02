@@ -170,7 +170,7 @@ class DiagnosisCreate(DiagnosisBase):
 
 class DiagnosisUpdate(BaseModel):
     """Model for updating diagnosis"""
-    cardiovascular_disease: Optional[int] = Field(..., ge=0, le=1)
+    cardiovascular_disease: Optional[int] = Field(None, ge=0, le=1)
 
 
 class DiagnosisResponse(BaseModel):
